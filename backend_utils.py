@@ -15,6 +15,7 @@ class KG:
         self.er_e = dict()
         self.ee_r = dict()
         self.edges = set()
+        self.rels = set()
 
     def construct_graph(self):
         ent_graph = dgl.graph(list(self.edges))
@@ -49,6 +50,7 @@ class EAData:
                     head, rel, tail = int(head), int(rel), int(tail)
                     # head, tail = self.kg[i].ent_ids.inv[head], self.kg[i].ent_ids.inv[tail]
                     self.kg[i].edges.add((head, tail))
+                    self.kg[i].rels.add((head, rel, tail))
                     self.kg[i].er_e[(head, rel)] = tail
                     if (head, tail) not in self.kg[i].ee_r.keys():
                         self.kg[i].ee_r[(head, tail)] = [rel]
