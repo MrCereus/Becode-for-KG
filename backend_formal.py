@@ -36,3 +36,9 @@ async def read_sim_data(request: Request):
     query_params = request.query_params
     res = algo.get_sim_data(int(query_params['ID1']))
     return res
+
+@app.get("/get_force_graph_data/")
+async def read_graph_data(request: Request):
+    query_params = request.query_params
+    res = algo.get_force_graph_data(int(query_params['ID1']),int(query_params['ID2']))
+    return res

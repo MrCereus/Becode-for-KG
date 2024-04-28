@@ -6,6 +6,7 @@ import os
 import torch.nn.functional as F
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial.distance import cdist
+import py2neo
 
 
 class KG:
@@ -114,6 +115,10 @@ class Algo:
         self.w = [0.3,0.4,0.3,0.05]
         self.final_res_dict = {}
         self.round = 0
+        url = "http://127.0.0.1:7474"
+        username = "neo4j"
+        password = "kgdemo"
+        self.graph = py2neo.Graph(url, auth=(username, password))
     
     def get_nei_rel(self, rels):
         rel_emb = torch.tensor(self.gwea.rel_emb)
@@ -338,3 +343,47 @@ class Algo:
             "rel": rel
         }
         return res
+    def get_force_graph_data(self, id1, id2):
+        def get_subgraph(id):
+                cypher = f'''
+                    MATCH (n) where n.id={id} \
+                    CALL apoc.path.subgraphAll(n, {{\
+                        maxLevel: 1\
+                    }}) \
+                    YIELD relationships \
+                    unwind relationships as r_ WITH DISTINCT r_ \
+                    return type(r_) as r_name, id(r_) as r_id, \
+                    startNode(r_).id as x_id, startNode(r_).name as x_name, \
+                    endNode(r_).id as y_id, endNode(r_).name as y_name, \
+                    labels(startNode(r_)) as x_labels, labels(endNode(r_)) as y_labels
+                '''
+                df = self.graph.run(cypher).to_data_frame()
+                rel_list = df.values.tolist()
+                nodes = {}
+                edges = {}
+                for rel in rel_list:
+                    if rel[2] not in nodes.keys():
+                        nodes[rel[2]] = rel[3]
+                    if rel[4] not in nodes.keys():
+                        nodes[rel[4]] = rel[5]
+                    if tuple([rel[2], rel[4]]) not in edges.keys():
+                        edges[tuple([rel[2], rel[4]])] = [rel[0]]
+                    else:
+                        edges[tuple([rel[2], rel[4]])].append(rel[0])
+                res = {
+                    "nodes":[],
+                    "edges":[]
+                }
+                for key, value in nodes.items():
+                    res["nodes"].append({
+                        "id" : key,
+                        "name": value
+                    })
+                for key, value in edges.items():
+                    res["edges"].append({
+                        "source" : key[0],
+                        "target": key[1],
+                        "rels" : value
+                    })
+                return res
+        return [get_subgraph(id1),get_subgraph(id2)]
