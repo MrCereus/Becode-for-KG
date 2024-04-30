@@ -7,6 +7,10 @@ import torch.nn.functional as F
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial.distance import cdist
 import py2neo
+import re
+import jieba 
+from sklearn.feature_extraction.text import TfidfVectorizer
+import nltk
 
 
 class KG:
@@ -29,9 +33,17 @@ class EAData:
         self.seed_pair = bidict()
         self.test_pair = bidict()
         self.loc = loc
+        self.attrs = {}
         self.load_dbp(bi)
         self.test_pair.update(self.seed_pair)
         self.seed_pair = bidict()
+        stop_words = []
+        with open(loc+'stopwords_full.txt', encoding='utf-8') as f: # 可根据需要打开停用词库，然后加上不想显示的词语
+            for line in f.readlines():
+                stop_words.append(line.replace("\n",""))
+        stop_words += list(nltk.corpus.stopwords.words('english'))
+        self.stop_words = set(stop_words)
+        
 
     def load_dbp(self, bi):
         for i in range(2):
@@ -60,6 +72,35 @@ class EAData:
                     if bi:
                         self.kg[i].er_e[(tail, rel)] = head
                 self.kg[i].construct_graph()
+            with open(self.loc+f'attr_triples_{str(i+1)}', encoding='UTF-8') as f:
+                for line in f.readlines():
+                    head, rel, tail = line.strip().split('\t')[:3]
+                    ent = self.kg[i].ent_ids.inv[head.split('resource/')[-1].replace('_', ' ')]
+                    prop = rel.split('property/')[-1]
+                    match = re.search(r'"(.*?)"', tail)
+                    if match:
+                        val = match.group(1)
+                    else:
+                        val = tail
+                    if ent not in self.attrs.keys():
+                        self.attrs[ent] = val
+                    else:
+                        self.attrs[ent] += " " + val
+                k = self.attrs.keys()
+            with open(self.loc+f'atts_properties_{str(i+1)}.txt', encoding='UTF-8') as f:
+                for line in f.readlines():
+                    head, rel, tail = line.strip().split('\t')[:3]
+                    ent = self.kg[i].ent_ids.inv[head.split('resource/')[-1].replace('_', ' ')]
+                    prop = rel.split('property/')[-1]
+                    match = re.search(r'"(.*?)"', tail)
+                    if match:
+                        val = match.group(1)
+                    else:
+                        val = tail
+                    if ent not in self.attrs.keys():
+                        self.attrs[ent] = val
+                    elif ent not in k:
+                        self.attrs[ent] += " " + val
 
         with open(self.loc+'sup_pairs', 'r', encoding='UTF-8') as f:
             for line in f.readlines():
@@ -193,6 +234,40 @@ class Algo:
         sim_rel = self.cal_rel_sim(id1, id2)[2]
         sim_mix = self.w[0]*sim_name+self.w[1]*sim_attr+self.w[2]*sim_stru+self.w[3]*sim_rel
         return sim_mix
+    
+    def cal_word_cloud(self, id1):
+        docs = []
+        words = jieba.lcut(self.gwea.data.attrs[id1], cut_all=False)
+        words = [w for w in words if w not in self.gwea.data.stop_words]
+        docs.append(" ".join(words))
+        for v in self.final_res_dict[id1]:
+            words = jieba.lcut(self.gwea.data.attrs[v], cut_all=False)
+            words = [w for w in words if w not in self.gwea.data.stop_words]
+            docs.append(" ".join(words))
+        vectorizer = TfidfVectorizer(stop_words=self.gwea.data.stop_words, use_idf= True)
+        X = vectorizer.fit_transform(docs) # 计算词频矩阵
+        attr_words = vectorizer.get_feature_names_out() # 查看词汇表
+        attr_freqs = X.toarray() # 查看词频矩阵
+        attr_res = {}
+        attr_res[id1] = []
+        for i in range(len(attr_words)):
+            if attr_freqs[0][i] != 0:
+                attr_res[id1].append({
+                    "x": attr_words[i],
+                    "value": attr_freqs[0][i] * 10,
+                    "category": "1"
+                })
+        for i in range(1,6):
+            id2 = self.final_res_dict[id1][i - 1]
+            attr_res[id2] = []
+            for j in range(len(attr_words)):
+                if attr_freqs[i][j] != 0:
+                    attr_res[id2].append({
+                        "x": attr_words[j],
+                        "value": attr_freqs[i][j] * 10,
+                        "category": "1"
+                    })
+        return attr_res
 
     def cal_top_5_res(self):
         arr = self.gwea.cost_st_attr+self.gwea.cost_st_feat
@@ -271,6 +346,7 @@ class Algo:
         attr = []
         stru = []
         rel = []
+        word_clouds = self.cal_word_cloud(id1)
         for id2 in self.final_res_dict[id1]:
             id2 = int(id2)
             # name
@@ -288,7 +364,7 @@ class Algo:
                 "ID1": id1,
                 "ID2": id2,
                 "Sim": sim_attr,
-                "Res": [[],[]]
+                "Res": [word_clouds[id1],word_clouds[id2]]
             })
 
             # stru
