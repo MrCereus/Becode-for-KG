@@ -370,6 +370,7 @@ class Algo:
             # stru
             row_ind, col_ind, sim_stru, similarity_matrix, e1n, e2n = self.cal_stru_sim(id1, id2)
             tmp_res = [[],[]]
+            align_pair = []
             for row, col in zip(row_ind, col_ind):
                 tmp_res[0].append({
                     "KG1": self.gwea.data.kg[0].ent_ids[int(e1n[row])],
@@ -379,9 +380,12 @@ class Algo:
                     "KG2": self.gwea.data.kg[1].ent_ids[int(e2n[col])],
                     "Sim": similarity_matrix[row][col]
                 })
+                align_pair.append([int(e1n[row]),int(e2n[col])])
             stru.append({
                 "ID1": id1,
                 "ID2": id2,
+                "centerNodePair":[id1, id2],
+                "alignNodePair":align_pair,
                 "Sim": sim_stru,
                 "Res": tmp_res
             })
