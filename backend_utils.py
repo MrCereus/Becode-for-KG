@@ -335,7 +335,8 @@ class Algo:
                 "ID1": id1,
                 "KG2": self.gwea.data.kg[1].ent_ids[id2],
                 "ID2": id2,
-                "Sim": sim_mix
+                "Sim": sim_mix,
+                "Status": "unmarked"
             })
         return table_data
 
