@@ -332,9 +332,9 @@ class Algo:
             sim_mix = self.cal_mix_sim(id1, id2)
             table_data.append({
                 "KG1": self.gwea.data.kg[0].ent_ids[id1],
-                "ID1": id1,
+                "ID1": str(id1),
                 "KG2": self.gwea.data.kg[1].ent_ids[id2],
-                "ID2": id2,
+                "ID2": str(id2),
                 "Sim": sim_mix,
                 "Status": "unmarked"
             })
@@ -353,8 +353,8 @@ class Algo:
             # name
             sim_name = self.cal_name_sim(id1, id2)
             name.append({
-                "ID1": id1,
-                "ID2": id2,
+                "ID1": str(id1),
+                "ID2": str(id2),
                 "Sim": sim_name,
                 "Res": [self.gwea.data.kg[0].ent_ids[id1],self.gwea.data.kg[1].ent_ids[id2]]
             })
@@ -362,8 +362,8 @@ class Algo:
             # attr
             sim_attr = self.cal_attr_sim(id1, id2)
             attr.append({
-                "ID1": id1,
-                "ID2": id2,
+                "ID1": str(id1),
+                "ID2": str(id2),
                 "Sim": sim_attr,
                 "Res": [word_clouds[id1],word_clouds[id2]]
             })
@@ -373,19 +373,22 @@ class Algo:
             tmp_res = [[],[]]
             align_pair = []
             for row, col in zip(row_ind, col_ind):
-                tmp_res[0].append({
-                    "KG1": self.gwea.data.kg[0].ent_ids[int(e1n[row])],
-                    "Sim": similarity_matrix[row][col]
-                })
-                tmp_res[1].append({
-                    "KG2": self.gwea.data.kg[1].ent_ids[int(e2n[col])],
-                    "Sim": similarity_matrix[row][col]
-                })
-                align_pair.append([int(e1n[row]),int(e2n[col])])
+                if similarity_matrix[row][col] > 0.3:
+                    tmp_res[0].append({
+                        "ID1": str(e1n[row]),
+                        "KG1": self.gwea.data.kg[0].ent_ids[int(e1n[row])],
+                        "Sim": similarity_matrix[row][col]
+                    })
+                    tmp_res[1].append({
+                        "ID2": str(e2n[col]),
+                        "KG2": self.gwea.data.kg[1].ent_ids[int(e2n[col])],
+                        "Sim": similarity_matrix[row][col]
+                    })
+                    align_pair.append([str(e1n[row]),str(e2n[col])])
             stru.append({
-                "ID1": id1,
-                "ID2": id2,
-                "centerNodePair":[id1, id2],
+                "ID1": str(id1),
+                "ID2": str(id2),
+                "centerNodePair":[str(id1), str(id2)],
                 "alignNodePair":align_pair,
                 "Sim": sim_stru,
                 "Res": tmp_res
@@ -394,25 +397,26 @@ class Algo:
             row_ind, col_ind, sim_rel, similarity_matrix, rel1, rel2 = self.cal_rel_sim(id1, id2)
             tmp_res = [[],[]]
             for row, col in zip(row_ind, col_ind):
-                tmp_res[0].append({
-                    "KG1": self.gwea.data.kg[0].rel_ids[int(rel1[row])],
-                    "Sim": similarity_matrix[row][col]
-                })
-                tmp_res[1].append({
-                    "KG2": self.gwea.data.kg[1].rel_ids[int(rel2[col])],
-                    "Sim": similarity_matrix[row][col]
-                })
+                if similarity_matrix[row][col] > 0.3:
+                    tmp_res[0].append({
+                        "KG1": self.gwea.data.kg[0].rel_ids[int(rel1[row])],
+                        "Sim": similarity_matrix[row][col]
+                    })
+                    tmp_res[1].append({
+                        "KG2": self.gwea.data.kg[1].rel_ids[int(rel2[col])],
+                        "Sim": similarity_matrix[row][col]
+                    })
             rel.append({
-                "ID1": id1,
-                "ID2": id2,
+                "ID1": str(id1),
+                "ID2": str(id2),
                 "Sim": sim_rel,
                 "Res": tmp_res
             })
 
             # mix
             mix.append({
-                "ID1": id1,
-                "ID2": id2,
+                "ID1": str(id1),
+                "ID2": str(id2),
                 "Sim": self.w[0]*sim_name+self.w[1]*sim_attr+self.w[2]*sim_stru+self.w[3]*sim_rel,
             })
 
@@ -457,13 +461,13 @@ class Algo:
                 }
                 for key, value in nodes.items():
                     res["nodes"].append({
-                        "id" : key,
+                        "id" : str(key),
                         "name": value
                     })
                 for key, value in edges.items():
                     res["edges"].append({
-                        "source" : key[0],
-                        "target": key[1],
+                        "source" : str(key[0]),
+                        "target": str(key[1]),
                         "rels" : value
                     })
                 return res
