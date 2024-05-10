@@ -467,7 +467,13 @@ class Algo:
                 for key, value in edges.items():
                     res["edges"].append({
                         "source" : str(key[0]),
+                        "source_name": self.gwea.data.kg[0].ent_ids[int(key[0])] \
+                            if int(key[0]) in self.gwea.data.kg[0].ent_ids.keys() else \
+                                self.gwea.data.kg[1].ent_ids[int(key[0])],
                         "target": str(key[1]),
+                        "target_name": self.gwea.data.kg[0].ent_ids[int(key[1])] \
+                            if int(key[1]) in self.gwea.data.kg[0].ent_ids.keys() else \
+                                self.gwea.data.kg[1].ent_ids[int(key[1])],
                         "rels" : value
                     })
                 return res
