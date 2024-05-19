@@ -275,7 +275,7 @@ class Algo:
         start = self.round * 100
         test_num = 100
         ent1 = [self.gwea.ent_ids1[i] for i in range(start, start + test_num)]
-        ent2 = [[self.gwea.ent_ids2[int(i)] for i in top_100_indices[int(j)]] for j in range(test_num)]
+        ent2 = [[self.gwea.ent_ids2[int(i)] for i in top_100_indices[int(j)]] for j in range(start, start + test_num)]
         sim_feat = []
         sim_attr = []
         sim_stru = []
@@ -328,7 +328,13 @@ class Algo:
         table_data = []
         for key, value in final_res_dict.items():
             id1 = int(key)
-            id2 = int(value[0])
+            id2 = 0
+            sims= {}
+            for tid2 in value:
+                sim_mix = self.cal_mix_sim(id1, int(tid2))
+                sims[tid2] = sim_mix
+            sorted_keys = sorted(sims, key = lambda x: sims[x], reverse=True)
+            id2 = int(sorted_keys[0])
             sim_mix = self.cal_mix_sim(id1, id2)
             table_data.append({
                 "KG1": self.gwea.data.kg[0].ent_ids[id1],
@@ -342,38 +348,38 @@ class Algo:
 
     def get_sim_data(self, id1):
         id1 = int(id1)
-        mix = []
-        name = []
-        attr = []
-        stru = []
-        rel = []
+        mix = {}
+        name = {}
+        attr = {}
+        stru = {}
+        rel = {}
         word_clouds = self.cal_word_cloud(id1)
         for id2 in self.final_res_dict[id1]:
             id2 = int(id2)
             # name
             sim_name = self.cal_name_sim(id1, id2)
-            name.append({
+            name[id2] = {
                 "ID1": str(id1),
                 "ID2": str(id2),
                 "Sim": sim_name,
                 "Res": [self.gwea.data.kg[0].ent_ids[id1],self.gwea.data.kg[1].ent_ids[id2]]
-            })
+            }
 
             # attr
             sim_attr = self.cal_attr_sim(id1, id2)
-            attr.append({
+            attr[id2] = {
                 "ID1": str(id1),
                 "ID2": str(id2),
                 "Sim": sim_attr,
                 "Res": [word_clouds[id1],word_clouds[id2]]
-            })
+            }
 
             # stru
             row_ind, col_ind, sim_stru, similarity_matrix, e1n, e2n = self.cal_stru_sim(id1, id2)
             tmp_res = [[],[]]
             align_pair = []
             for row, col in zip(row_ind, col_ind):
-                if similarity_matrix[row][col] > 0.3:
+                if similarity_matrix[row][col] > 0.55:
                     tmp_res[0].append({
                         "ID1": str(e1n[row]),
                         "KG1": self.gwea.data.kg[0].ent_ids[int(e1n[row])],
@@ -385,19 +391,19 @@ class Algo:
                         "Sim": similarity_matrix[row][col]
                     })
                     align_pair.append([str(e1n[row]),str(e2n[col])])
-            stru.append({
+            stru[id2] = {
                 "ID1": str(id1),
                 "ID2": str(id2),
                 "centerNodePair":[str(id1), str(id2)],
                 "alignNodePair":align_pair,
                 "Sim": sim_stru,
                 "Res": tmp_res
-            })
+            }
             # rel
             row_ind, col_ind, sim_rel, similarity_matrix, rel1, rel2 = self.cal_rel_sim(id1, id2)
             tmp_res = [[],[]]
             for row, col in zip(row_ind, col_ind):
-                if similarity_matrix[row][col] > 0.3:
+                if similarity_matrix[row][col] > 0.55:
                     tmp_res[0].append({
                         "KG1": self.gwea.data.kg[0].rel_ids[int(rel1[row])],
                         "Sim": similarity_matrix[row][col]
@@ -406,26 +412,26 @@ class Algo:
                         "KG2": self.gwea.data.kg[1].rel_ids[int(rel2[col])],
                         "Sim": similarity_matrix[row][col]
                     })
-            rel.append({
+            rel[id2] = {
                 "ID1": str(id1),
                 "ID2": str(id2),
                 "Sim": sim_rel,
                 "Res": tmp_res
-            })
+            }
 
             # mix
-            mix.append({
+            mix[id2] = {
                 "ID1": str(id1),
                 "ID2": str(id2),
                 "Sim": self.w[0]*sim_name+self.w[1]*sim_attr+self.w[2]*sim_stru+self.w[3]*sim_rel,
-            })
-
+            }
+        sorted_keys = sorted(mix, key = lambda x: mix[x]["Sim"], reverse=True)
         res = {
-            "sim_mix": mix,
-            "name": name,
-            "attr": attr,
-            "stru": stru,
-            "rel": rel
+            "sim_mix": [mix[i] for i in sorted_keys],
+            "name": [name[i] for i in sorted_keys],
+            "attr": [attr[i] for i in sorted_keys],
+            "stru": [stru[i] for i in sorted_keys],
+            "rel": [rel[i] for i in sorted_keys]
         }
         return res
     def get_force_graph_data(self, id1, id2):
